@@ -75,12 +75,12 @@ nonisolated struct Contact: Identifiable {
 // in every stored property — including `thumbnailData`, so each comparison hashed a whole image, and
 // the per-instance `LabeledValue` identities, so no two fetches of the same contact ever compared
 // equal. That broke `List` diffing and `NavigationStack` path matching alike.
-extension Contact: Hashable {
-    nonisolated static func == (lhs: Contact, rhs: Contact) -> Bool {
+nonisolated extension Contact: Hashable {
+    static func == (lhs: Contact, rhs: Contact) -> Bool {
         lhs.id == rhs.id
     }
 
-    nonisolated func hash(into hasher: inout Hasher) {
+    func hash(into hasher: inout Hasher) {
         hasher.combine(id)
     }
 }
