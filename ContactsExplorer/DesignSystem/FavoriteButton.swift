@@ -24,10 +24,11 @@ struct FavoriteButton: View {
 // explicitly -- otherwise they would drag PreviewData into the shipping binary,
 // which is the very thing moving it behind #if DEBUG was meant to prevent.
 #if DEBUG
-#Preview {
-    HStack(spacing: 24) {
-        FavoriteButton(isFavorite: false, action: {})
-        FavoriteButton(isFavorite: true, action: {})
-    }
+#Preview("SELECTED") {
+  FavoriteButton(isFavorite: true, action: {})
+}
+
+#Preview("NOT SELECTED"){
+  FavoriteButton(isFavorite: false, action: {})
 }
 #endif
