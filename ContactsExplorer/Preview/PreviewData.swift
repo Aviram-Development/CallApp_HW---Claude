@@ -1,35 +1,39 @@
 //
-//  MockGenerator.swift
+//  PreviewData.swift
 //  ContactsExplorer
 //
-//  Created by Shai Balassiano on 17/08/2026.
-//
 
+#if DEBUG
 import UIKit
 
-struct MockGenerator {
-    private init() {}
-
+/// Fixtures for SwiftUI previews and tests.
+///
+/// Wrapped in `#if DEBUG` so none of it — including the UIKit image rendering below — reaches a
+/// release build. Its predecessor, `MockGenerator`, shipped in the app target and had no call sites
+/// at all, because the project contained no previews to use it.
+nonisolated enum PreviewData {
+    /// A fully populated contact: two phone numbers, two emails, a birthday and a thumbnail.
     static func contact() -> Contact {
         Contact(
             id: "contact-emma",
             givenName: "Emma",
             familyName: "Stone",
             fullName: "Emma Stone",
-            organizationName: "",
+            organizationName: "Willow Studio",
             phoneNumbers: [
-                Contact.LabeledValue(label: "mobile", value: "+972 54-123-4567"),
-                Contact.LabeledValue(label: "work", value: "03-612-3456")
+                Contact.LabeledValue(index: 0, label: "mobile", value: "+972 54-123-4567"),
+                Contact.LabeledValue(index: 1, label: "work", value: "03-612-3456")
             ],
             emails: [
-                Contact.LabeledValue(label: "home", value: "emma@example.com"),
-                Contact.LabeledValue(label: "work", value: "emma.stone@example.com")
+                Contact.LabeledValue(index: 0, label: "home", value: "emma@example.com"),
+                Contact.LabeledValue(index: 1, label: "work", value: "emma.stone@example.com")
             ],
             birthday: date(year: 1988, month: 11, day: 6),
             thumbnailData: imageData(color: .systemIndigo)
         )
     }
 
+    /// A contact with a name and nothing else — exercises the empty-details branch of the detail view.
     static func bareContact() -> Contact {
         Contact(
             id: "contact-maya",
@@ -44,6 +48,8 @@ struct MockGenerator {
         )
     }
 
+    /// A spread covering each `displayName` fallback: a full name, a first name only, an
+    /// organization with no person name, and a card with nothing but a phone number.
     static func contacts() -> [Contact] {
         [
             contact(),
@@ -53,8 +59,8 @@ struct MockGenerator {
                 familyName: "Chen",
                 fullName: "James Chen",
                 organizationName: "",
-                phoneNumbers: [Contact.LabeledValue(label: "mobile", value: "(212) 555-0187")],
-                emails: [Contact.LabeledValue(label: "work", value: "james.chen@example.com")],
+                phoneNumbers: [Contact.LabeledValue(index: 0, label: "mobile", value: "(212) 555-0187")],
+                emails: [Contact.LabeledValue(index: 0, label: "work", value: "james.chen@example.com")],
                 birthday: date(year: 1990, month: 3, day: 14),
                 thumbnailData: nil
             ),
@@ -66,7 +72,7 @@ struct MockGenerator {
                 fullName: "Noah Davis",
                 organizationName: "",
                 phoneNumbers: [],
-                emails: [Contact.LabeledValue(label: "home", value: "noah.davis@example.com")],
+                emails: [Contact.LabeledValue(index: 0, label: "home", value: "noah.davis@example.com")],
                 birthday: nil,
                 thumbnailData: nil
             ),
@@ -76,7 +82,7 @@ struct MockGenerator {
                 familyName: "",
                 fullName: "Olivia",
                 organizationName: "",
-                phoneNumbers: [Contact.LabeledValue(label: "mobile", value: "052-876-5432")],
+                phoneNumbers: [Contact.LabeledValue(index: 0, label: "mobile", value: "052-876-5432")],
                 emails: [],
                 birthday: nil,
                 thumbnailData: imageData(color: .systemTeal)
@@ -87,7 +93,7 @@ struct MockGenerator {
                 familyName: "",
                 fullName: "",
                 organizationName: "Pizza Palace",
-                phoneNumbers: [Contact.LabeledValue(label: "main", value: "09-765-4321")],
+                phoneNumbers: [Contact.LabeledValue(index: 0, label: "main", value: "09-765-4321")],
                 emails: [],
                 birthday: nil,
                 thumbnailData: nil
@@ -98,20 +104,12 @@ struct MockGenerator {
                 familyName: "",
                 fullName: "",
                 organizationName: "",
-                phoneNumbers: [Contact.LabeledValue(label: "mobile", value: "058-112-2334")],
+                phoneNumbers: [Contact.LabeledValue(index: 0, label: "mobile", value: "058-112-2334")],
                 emails: [],
                 birthday: nil,
                 thumbnailData: nil
             )
         ]
-    }
-
-    static func store(
-        contacts: [Contact] = MockGenerator.contacts(),
-        state: ContactsStore.LoadState = .loaded,
-        favoriteIDs: Set<String> = ["contact-emma"]
-    ) -> ContactsStore {
-        ContactsStore(contacts: contacts, state: state, favoriteIDs: favoriteIDs)
     }
 
     static func date(year: Int, month: Int, day: Int) -> Date? {
@@ -128,3 +126,4 @@ struct MockGenerator {
         return image.pngData()
     }
 }
+#endif
