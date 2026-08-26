@@ -182,11 +182,16 @@ struct ContactDetailView: View {
         case .call, .message: value.filter { $0.isWholeNumber || $0 == "+" }
         case .mail: value
         }
-        guard
-            let encoded = recipient.addingPercentEncoding(withAllowedCharacters: .urlHostAllowed),
-            !encoded.isEmpty,
-            let url = URL(string: "\(kind.rawValue):\(encoded)")
-        else { return }
+        guard !recipient.isEmpty else { return }
+
+        // Built through `URLComponents` rather than by encoding with `.urlHostAllowed` and splicing
+        // the string together. Neither a phone number nor an email address is a URL *host*, and that
+        // set excludes "@" — so `mailto:` recipients were being escaped to "emma%40example.com".
+        // Mail happens to decode that again, but the escaping was never correct.
+        var components = URLComponents()
+        components.scheme = kind.rawValue
+        components.path = recipient
+        guard let url = components.url else { return }
         openURL(url)
     }
 }

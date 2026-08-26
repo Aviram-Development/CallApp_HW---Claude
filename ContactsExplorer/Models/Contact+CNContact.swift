@@ -7,27 +7,29 @@ import Contacts
 
 nonisolated extension Contact {
     init(_ cnContact: CNContact) {
-        id = cnContact.identifier
-        givenName = cnContact.givenName
-        familyName = cnContact.familyName
-        fullName = CNContactFormatter.string(from: cnContact, style: .fullName) ?? ""
-        organizationName = cnContact.organizationName
-        phoneNumbers = cnContact.phoneNumbers.enumerated().map { index, phoneNumber in
-            LabeledValue(
-                index: index,
-                label: phoneNumber.label.map { CNLabeledValue<CNPhoneNumber>.localizedString(forLabel: $0) } ?? "phone",
-                value: phoneNumber.value.stringValue
-            )
-        }
-        emails = cnContact.emailAddresses.enumerated().map { index, email in
-            LabeledValue(
-                index: index,
-                label: email.label.map { CNLabeledValue<NSString>.localizedString(forLabel: $0) } ?? "email",
-                value: email.value as String
-            )
-        }
-        birthday = cnContact.birthday.flatMap { Calendar.current.date(from: $0) }
-        thumbnailData = cnContact.thumbnailImageData
+        self.init(
+            id: cnContact.identifier,
+            givenName: cnContact.givenName,
+            familyName: cnContact.familyName,
+            fullName: CNContactFormatter.string(from: cnContact, style: .fullName) ?? "",
+            organizationName: cnContact.organizationName,
+            phoneNumbers: cnContact.phoneNumbers.enumerated().map { index, phoneNumber in
+                LabeledValue(
+                    index: index,
+                    label: phoneNumber.label.map { CNLabeledValue<CNPhoneNumber>.localizedString(forLabel: $0) } ?? "phone",
+                    value: phoneNumber.value.stringValue
+                )
+            },
+            emails: cnContact.emailAddresses.enumerated().map { index, email in
+                LabeledValue(
+                    index: index,
+                    label: email.label.map { CNLabeledValue<NSString>.localizedString(forLabel: $0) } ?? "email",
+                    value: email.value as String
+                )
+            },
+            birthday: cnContact.birthday.flatMap { Calendar.current.date(from: $0) },
+            thumbnailData: cnContact.thumbnailImageData
+        )
     }
 
     /// Every key the `Contact` initializer above reads. Asking `CNContactStore` for a key that is not

@@ -135,11 +135,16 @@ struct ContactTests {
         #expect(phoneOnly.sectionTitle == "#")
     }
 
-    // A nameless contact displays as "No Name" and so files under N. Sectioning follows the label the
-    // row actually shows, which keeps the index honest: whatever you read, that is where you find it.
-    @Test("A nameless contact files under its placeholder label")
-    func sectionTitleFollowsThePlaceholder() {
-        #expect(ContactTests.make(fullName: "", organizationName: "").sectionTitle == "N")
+    // Regression test. Sectioning used to key off `displayName`, so a card with nothing to show
+    // fell back to the "No Name" placeholder and filed under N, next to Noah and Nadia -- and would
+    // have moved to a different letter entirely the moment that string was localized.
+    @Test("A nameless contact files under # rather than under its placeholder label")
+    func namelessContactFilesUnderHash() {
+        let nameless = ContactTests.make(fullName: "", organizationName: "")
+
+        #expect(nameless.displayName == "No Name")
+        #expect(nameless.sectionTitle == "#")
+        #expect(nameless.sortKey.isEmpty)
     }
 
     // MARK: - Helper

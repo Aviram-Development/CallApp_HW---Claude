@@ -45,10 +45,9 @@ actor CNContactsRepository: ContactsRepository {
         try store.enumerateContacts(with: request) { cnContact, _ in
             contacts.append(Contact(cnContact))
         }
-
-        // `.userDefault` orders by the user's Contacts preference, but the list sections by
-        // `sortKey`, so sort by the same key here to keep order and section headers in agreement.
-        return contacts.sorted { $0.sortKey.localizedStandardCompare($1.sortKey) == .orderedAscending }
+        // Deliberately returned in whatever order the store yielded. Display order is decided once,
+        // in `LoadContactsUseCase`, so that it cannot drift between repository implementations.
+        return contacts
     }
 
     func fetchFullImageData(for contactID: String) async throws -> Data? {

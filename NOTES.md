@@ -49,11 +49,24 @@ or an environment lookup: nothing can reach a service it was not handed.
 
 ## Judgment calls
 
-**Sorting and sectioning both key off `displayName`.** The original fetched with
+**Sorting and sectioning both key off the contact's resolved name.** The original fetched with
 `sortOrder = .userDefault`. Sectioning by family name while sorting by the user's display-order
-preference would let headers and order disagree. Keying both off `displayName` means a contact always
+preference would let headers and order disagree. Keying both off the same name means a contact always
 files under the letter you can see it starts with. `CNContactFormatter` already honours the user's
 given/family order preference, so this follows that preference rather than fighting it.
+
+`sortKey` and `sectionTitle` are *stored*, resolved once in `Contact.init`. As computed properties
+they were evaluated inside the fetch's sort comparator — one ICU `folding()` allocation per
+comparison, O(n log n) of them per fetch — and again per contact on every render, since `sections` is
+recomputed each body pass. A card with no name at all files under "#", not under the first letter of
+the "No Name" placeholder; that is why the section key folds the resolved name rather than
+`displayName`.
+
+**Display order is applied once, in `LoadContactsUseCase`.** It used to be applied by each repository
+for itself, which meant it was duplicated between the live and preview implementations and absent
+from the test fakes entirely — the view-model tests passed only because their fixtures happened to be
+alphabetical. `ContactsRepository` now promises nothing about order and `ContactSectionBuilder`
+groups without re-sorting.
 
 **Favourites are duplicated, not moved.** A pinned favourite also stays in its letter section.
 Removing it would mean scrolling to "S" for a favourited Emma Stone and not finding her. The pinned

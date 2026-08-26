@@ -20,7 +20,7 @@ struct ContactAvatarView: View {
 
     var body: some View {
         Group {
-            if let data = imageData ?? contact.thumbnailData, let image = UIImage(data: data) {
+            if let image = decodedImage {
                 Image(uiImage: image)
                     .resizable()
                     .scaledToFill()
@@ -32,6 +32,17 @@ struct ContactAvatarView: View {
         .clipShape(.circle)
         // The photo is decorative; the row already announces the contact's name.
         .accessibilityHidden(true)
+    }
+
+    /// Goes through `ContactImageCache` rather than calling `UIImage(data:)` here: `body` runs on
+    /// every re-evaluation of the row, and decoding the same photo each time is what made scrolling
+    /// a list of contacts with photos stutter.
+    private var decodedImage: UIImage? {
+        if let imageData {
+            return ContactImageCache.image(for: contact.id, kind: .full, data: imageData)
+        }
+        guard let thumbnailData = contact.thumbnailData else { return nil }
+        return ContactImageCache.image(for: contact.id, kind: .thumbnail, data: thumbnailData)
     }
 
     private var initialsAvatar: some View {

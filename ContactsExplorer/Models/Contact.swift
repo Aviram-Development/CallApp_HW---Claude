@@ -26,6 +26,12 @@ nonisolated struct Contact: Identifiable {
         }
     }
 
+    /// Shown in place of a name when a card carries nothing at all to identify it by.
+    static let noNamePlaceholder = "No Name"
+
+    /// The bucket for contacts whose name does not begin with a letter, and for those with no name.
+    static let nonLetterSectionTitle = "#"
+
     let id: String
     let givenName: String
     let familyName: String
@@ -36,14 +42,82 @@ nonisolated struct Contact: Identifiable {
     let birthday: Date?
     let thumbnailData: Data?
 
-    var displayName: String {
+    /// The name to show for this contact, resolved once.
+    let displayName: String
+
+    /// `displayName` folded for comparison, and the basis of `sectionTitle`.
+    ///
+    /// Stored, not computed. It used to be evaluated inside the fetch's sort comparator, which meant
+    /// one `folding(options:locale:)` allocation *per comparison* — O(n log n) of them per fetch —
+    /// and once more per contact on every render, since `sections` is recomputed each body pass.
+    let sortKey: String
+
+    /// The A–Z index title for this contact. Anything that does not begin with a letter, including
+    /// a card with no name at all, files under "#".
+    let sectionTitle: String
+
+    init(
+        id: String,
+        givenName: String,
+        familyName: String,
+        fullName: String,
+        organizationName: String,
+        phoneNumbers: [LabeledValue],
+        emails: [LabeledValue],
+        birthday: Date?,
+        thumbnailData: Data?
+    ) {
+        self.id = id
+        self.givenName = givenName
+        self.familyName = familyName
+        self.fullName = fullName
+        self.organizationName = organizationName
+        self.phoneNumbers = phoneNumbers
+        self.emails = emails
+        self.birthday = birthday
+        self.thumbnailData = thumbnailData
+
+        let name = Self.resolvedName(
+            fullName: fullName,
+            organizationName: organizationName,
+            phoneNumbers: phoneNumbers,
+            emails: emails
+        )
+        self.displayName = name ?? Self.noNamePlaceholder
+
+        // Note this folds the *resolved* name, not `displayName`. Sectioning off the placeholder
+        // would file every nameless card under "N" for "No Name", next to Noah and Nadia — and would
+        // move them to a different letter the moment the placeholder is localized.
+        let sortKey = (name ?? "").folding(
+            options: [.diacriticInsensitive, .caseInsensitive],
+            locale: .current
+        )
+        self.sortKey = sortKey
+
+        if let first = sortKey.first, first.isLetter {
+            self.sectionTitle = String(first).uppercased()
+        } else {
+            self.sectionTitle = Self.nonLetterSectionTitle
+        }
+    }
+
+    /// The best name this card can offer, or `nil` when it has none.
+    ///
+    /// Kept separate from `displayName` so that sectioning can tell "has no name" apart from
+    /// "is named No Name".
+    private static func resolvedName(
+        fullName: String,
+        organizationName: String,
+        phoneNumbers: [LabeledValue],
+        emails: [LabeledValue]
+    ) -> String? {
         if !fullName.isEmpty {
             return fullName
         }
         if !organizationName.isEmpty {
             return organizationName
         }
-        return phoneNumbers.first?.value ?? emails.first?.value ?? "No Name"
+        return phoneNumbers.first?.value ?? emails.first?.value
     }
 
     var initials: String {
@@ -54,20 +128,16 @@ nonisolated struct Contact: Identifiable {
         if let organizationInitial = organizationName.first {
             return String(organizationInitial).uppercased()
         }
-        return "#"
+        return Self.nonLetterSectionTitle
     }
 
-    /// Sorting and sectioning both key off `displayName`, so a contact always files under the letter
-    /// it visibly starts with. `CNContactFormatter` already honours the user's given/family display
-    /// order preference, so this follows that preference rather than fighting it.
-    var sortKey: String {
-        displayName.folding(options: [.diacriticInsensitive, .caseInsensitive], locale: .current)
-    }
-
-    /// The A–Z index title for this contact; anything not starting with a letter files under "#".
-    var sectionTitle: String {
-        guard let first = sortKey.first, first.isLetter else { return "#" }
-        return String(first).uppercased()
+    /// Orders contacts the way the list displays them: by `sortKey`, so that sort order and section
+    /// headers can never disagree.
+    ///
+    /// Lives here rather than in a repository so there is one definition of display order, applied
+    /// once, that no new repository implementation can forget.
+    static func isOrderedBefore(_ lhs: Contact, _ rhs: Contact) -> Bool {
+        lhs.sortKey.localizedStandardCompare(rhs.sortKey) == .orderedAscending
     }
 }
 

@@ -62,6 +62,31 @@ struct LoadContactsUseCaseTests {
         #expect(repository.fetchContactsCallCount == 0)
     }
 
+    // Display order used to be applied by each repository for itself, which meant the test doubles
+    // did not apply it at all and nothing stopped a new implementation from forgetting it. It is now
+    // applied once, here, and `ContactSectionBuilder` groups without re-sorting.
+    @Test("Contacts come back in display order however the repository yields them")
+    func sortsIntoDisplayOrder() async throws {
+        let repository = FakeContactsRepository(
+            authorizationStatus: .granted,
+            contacts: [
+                TestContact.make(id: "zoe", fullName: "Zoe Zhang"),
+                TestContact.make(id: "nameless", fullName: ""),
+                TestContact.make(id: "emile", fullName: "\u{00C9}mile Zola"),
+                TestContact.make(id: "anna", fullName: "anna Adams")
+            ]
+        )
+
+        let outcome = try await LoadContactsUseCase(repository: repository)()
+
+        guard case .loaded(let contacts) = outcome else {
+            Issue.record("Expected contacts, got \(outcome)")
+            return
+        }
+        // Nameless first (it sorts as an empty key), then case- and diacritic-insensitively by name.
+        #expect(contacts.map(\.id) == ["nameless", "anna", "emile", "zoe"])
+    }
+
     @Test("A fetch failure propagates")
     func fetchFailurePropagates() async {
         let repository = FakeContactsRepository(authorizationStatus: .granted, fetchError: TestError.boom)

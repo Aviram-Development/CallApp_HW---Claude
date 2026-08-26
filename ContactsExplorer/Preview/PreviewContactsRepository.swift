@@ -21,7 +21,7 @@ nonisolated struct PreviewContactsRepository: ContactsRepository {
     }
 
     func fetchContacts() async throws -> [Contact] {
-        contacts.sorted { $0.sortKey.localizedStandardCompare($1.sortKey) == .orderedAscending }
+        contacts
     }
 
     func fetchFullImageData(for contactID: String) async throws -> Data? {

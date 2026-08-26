@@ -21,12 +21,13 @@ nonisolated struct ContactSection: Identifiable, Hashable {
 /// Pure, like `ContactSearchMatcher`, so the grouping rules can be asserted directly rather than
 /// inferred from a screenshot.
 nonisolated struct ContactSectionBuilder {
-    /// The bucket for contacts whose displayed name does not begin with a letter.
-    static let nonLetterTitle = "#"
+    /// The bucket for contacts whose name does not begin with a letter, or who have no name.
+    static let nonLetterTitle = Contact.nonLetterSectionTitle
     static let favoritesTitle = "Favorites"
 
     /// - Parameters:
-    ///   - contacts: already sorted by `sortKey`; grouping preserves that order.
+    ///   - contacts: in display order, as returned by `LoadContactsUseCase`. Grouping preserves
+    ///     that order rather than re-deriving it, so this stays cheap enough to run per keystroke.
     ///   - favoriteIDs: identifiers to pin into a leading favourites section.
     ///   - includeFavoritesSection: pass `false` while searching. Favourites are duplicated into the
     ///     pinned section *and* left in their letter bucket, which reads as a shortcut when browsing

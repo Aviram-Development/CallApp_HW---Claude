@@ -18,7 +18,10 @@ nonisolated protocol ContactsRepository: Sendable {
     /// - Returns: whether access was granted.
     func requestAccess() async throws -> Bool
 
-    /// Every contact on the device, sorted for display.
+    /// Every contact on the device, in whatever order the underlying store yields them.
+    ///
+    /// Ordering is not part of this contract on purpose: display order is domain logic, applied
+    /// once in `LoadContactsUseCase`, so no implementation of this protocol can forget it.
     func fetchContacts() async throws -> [Contact]
 
     /// The full-resolution image for one contact, which is deliberately excluded from
