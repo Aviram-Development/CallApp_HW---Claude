@@ -94,12 +94,14 @@ struct ContactsListView: View {
                 }
             }
             .listStyle(.plain)
-            .overlay(alignment: .trailing) {
+            // A safe-area inset rather than an overlay, so the bar reserves its own column instead
+            // of floating over the disclosure chevrons at the end of each row.
+            .safeAreaInset(edge: .trailing, spacing: 0) {
                 if let indexTitles = indexTitles(for: sections) {
                     SectionIndexBar(titles: indexTitles) { title in
-                        proxy.scrollTo(title, anchor: .top)
+                        withAnimation { proxy.scrollTo(title, anchor: .top) }
                     }
-                    .padding(.trailing, 2)
+                    .padding(.trailing, 4)
                 }
             }
         }
@@ -160,6 +162,10 @@ struct ContactsListView: View {
     }
 }
 
+// Previews are compiled into release builds too, so they have to be excluded
+// explicitly -- otherwise they would drag PreviewData into the shipping binary,
+// which is the very thing moving it behind #if DEBUG was meant to prevent.
+#if DEBUG
 #Preview("Loaded") {
     let dependencies = AppDependencies.preview()
     ContactsListView(
@@ -183,3 +189,4 @@ struct ContactsListView: View {
         favorites: FavoritesModel(favoritesStore: dependencies.favoritesStore)
     )
 }
+#endif

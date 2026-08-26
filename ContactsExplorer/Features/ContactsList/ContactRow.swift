@@ -47,9 +47,14 @@ struct ContactRow: View {
     }
 }
 
+// Previews are compiled into release builds too, so they have to be excluded
+// explicitly -- otherwise they would drag PreviewData into the shipping binary,
+// which is the very thing moving it behind #if DEBUG was meant to prevent.
+#if DEBUG
 #Preview {
     List(PreviewData.contacts()) { contact in
         ContactRow(contact: contact, isFavorite: contact.id == "contact-emma") {}
     }
     .listStyle(.plain)
 }
+#endif

@@ -191,6 +191,10 @@ struct ContactDetailView: View {
     }
 }
 
+// Previews are compiled into release builds too, so they have to be excluded
+// explicitly -- otherwise they would drag PreviewData into the shipping binary,
+// which is the very thing moving it behind #if DEBUG was meant to prevent.
+#if DEBUG
 #Preview("Full contact") {
     NavigationStack {
         let dependencies = AppDependencies.preview()
@@ -212,3 +216,4 @@ struct ContactDetailView: View {
         )
     }
 }
+#endif

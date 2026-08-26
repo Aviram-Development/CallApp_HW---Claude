@@ -30,6 +30,10 @@ struct QuickActionButton: View {
     }
 }
 
+// Previews are compiled into release builds too, so they have to be excluded
+// explicitly -- otherwise they would drag PreviewData into the shipping binary,
+// which is the very thing moving it behind #if DEBUG was meant to prevent.
+#if DEBUG
 #Preview {
     HStack(spacing: 10) {
         QuickActionButton(title: "Call", systemImage: "phone.fill") {}
@@ -38,3 +42,4 @@ struct QuickActionButton: View {
     }
     .padding()
 }
+#endif
