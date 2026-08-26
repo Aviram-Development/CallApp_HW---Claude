@@ -1,0 +1,214 @@
+//
+//  ContactDetailView.swift
+//  ContactsExplorer
+//
+
+import SwiftUI
+
+struct ContactDetailView: View {
+    @Environment(\.openURL) private var openURL
+
+    @State private var viewModel: ContactDetailViewModel
+    private let favorites: FavoritesModel
+
+    init(contact: Contact, dependencies: AppDependencies, favorites: FavoritesModel) {
+        _viewModel = State(wrappedValue: ContactDetailViewModel(contact: contact, dependencies: dependencies))
+        self.favorites = favorites
+    }
+
+    private var contact: Contact { viewModel.contact }
+
+    var body: some View {
+        List {
+            header
+            phoneNumbers
+            emails
+            noDetailsNotice
+            info
+        }
+        .navigationTitle(contact.displayName)
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                FavoriteButton(isFavorite: favorites.isFavorite(contact)) {
+                    favorites.toggle(contact)
+                }
+            }
+        }
+        .task {
+            await viewModel.loadFullImage()
+        }
+    }
+
+    // MARK: - Header
+
+    private var header: some View {
+        Section {
+            VStack(spacing: 12) {
+                ContactAvatarView(contact: contact, imageData: viewModel.fullImageData, size: 120)
+
+                VStack(spacing: 2) {
+                    Text(contact.displayName)
+                        .font(.title.bold())
+                        .multilineTextAlignment(.center)
+                    // Only worth showing when it is not already doing duty as the display name.
+                    if !contact.organizationName.isEmpty, contact.organizationName != contact.displayName {
+                        Text(contact.organizationName)
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+
+                quickActions
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 8)
+        }
+        .listRowBackground(Color.clear)
+        .listRowSeparator(.hidden)
+    }
+
+    @ViewBuilder
+    private var quickActions: some View {
+        let firstPhoneNumber = contact.phoneNumbers.first?.value
+        let firstEmail = contact.emails.first?.value
+
+        if firstPhoneNumber != nil || firstEmail != nil {
+            HStack(spacing: 10) {
+                if let firstPhoneNumber {
+                    QuickActionButton(title: "Call", systemImage: "phone.fill") {
+                        open(.call, firstPhoneNumber)
+                    }
+                    QuickActionButton(title: "Message", systemImage: "message.fill") {
+                        open(.message, firstPhoneNumber)
+                    }
+                }
+                if let firstEmail {
+                    QuickActionButton(title: "Mail", systemImage: "envelope.fill") {
+                        open(.mail, firstEmail)
+                    }
+                }
+            }
+            .padding(.top, 4)
+        }
+    }
+
+    // MARK: - Details
+
+    @ViewBuilder
+    private var phoneNumbers: some View {
+        if !contact.phoneNumbers.isEmpty {
+            Section("Phone Numbers") {
+                ForEach(contact.phoneNumbers) { phoneNumber in
+                    actionableRow(label: phoneNumber.label, value: phoneNumber.value) {
+                        open(.call, phoneNumber.value)
+                    }
+                }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var emails: some View {
+        if !contact.emails.isEmpty {
+            Section("Emails") {
+                ForEach(contact.emails) { email in
+                    actionableRow(label: email.label, value: email.value) {
+                        open(.mail, email.value)
+                    }
+                }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var noDetailsNotice: some View {
+        if contact.phoneNumbers.isEmpty && contact.emails.isEmpty {
+            Section {
+                Text("This contact has no phone numbers or emails.")
+                    .foregroundStyle(.secondary)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var info: some View {
+        if !contact.organizationName.isEmpty || contact.birthday != nil {
+            Section("Info") {
+                if !contact.organizationName.isEmpty {
+                    LabeledContent("Organization", value: contact.organizationName)
+                }
+                if let birthday = contact.birthday {
+                    LabeledContent("Birthday", value: birthday.formatted(date: .long, time: .omitted))
+                }
+            }
+        }
+    }
+
+    /// A phone number or email address: tap to act on it, long-press to copy it.
+    private func actionableRow(label: String, value: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(label)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                Text(value)
+                    .foregroundStyle(Color.accentColor)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .contentShape(.rect)
+        }
+        .buttonStyle(.plain)
+        .accessibilityElement(children: .combine)
+        .contextMenu {
+            Button("Copy", systemImage: "doc.on.doc") {
+                UIPasteboard.general.string = value
+            }
+        }
+    }
+
+    // MARK: - Links
+
+    private enum LinkKind: String {
+        case call = "tel"
+        case message = "sms"
+        case mail = "mailto"
+    }
+
+    private func open(_ kind: LinkKind, _ value: String) {
+        // `tel:` and `sms:` only accept digits and a leading "+"; a number stored as
+        // "+972 54-123-4567" has to be stripped down before it will open.
+        let recipient: String = switch kind {
+        case .call, .message: value.filter { $0.isWholeNumber || $0 == "+" }
+        case .mail: value
+        }
+        guard
+            let encoded = recipient.addingPercentEncoding(withAllowedCharacters: .urlHostAllowed),
+            !encoded.isEmpty,
+            let url = URL(string: "\(kind.rawValue):\(encoded)")
+        else { return }
+        openURL(url)
+    }
+}
+
+#Preview("Full contact") {
+    NavigationStack {
+        let dependencies = AppDependencies.preview()
+        ContactDetailView(
+            contact: PreviewData.contact(),
+            dependencies: dependencies,
+            favorites: FavoritesModel(favoritesStore: dependencies.favoritesStore)
+        )
+    }
+}
+
+#Preview("Name only") {
+    NavigationStack {
+        let dependencies = AppDependencies.preview()
+        ContactDetailView(
+            contact: PreviewData.bareContact(),
+            dependencies: dependencies,
+            favorites: FavoritesModel(favoritesStore: dependencies.favoritesStore)
+        )
+    }
+}
