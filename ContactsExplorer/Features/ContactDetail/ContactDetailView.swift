@@ -28,6 +28,9 @@ struct ContactDetailView: View {
         }
         .navigationTitle(contact.displayName)
         .navigationBarTitleDisplayMode(.inline)
+        // A pushed detail screen is a dead end, not a place to switch tabs from, and the floating
+        // iOS 26 tab bar would otherwise sit on top of the last row of emails.
+        .toolbar(.hidden, for: .tabBar)
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
                 FavoriteButton(isFavorite: favorites.isFavorite(contact)) {
@@ -74,18 +77,20 @@ struct ContactDetailView: View {
         let firstEmail = contact.emails.first?.value
 
         if firstPhoneNumber != nil || firstEmail != nil {
-            HStack(spacing: 10) {
-                if let firstPhoneNumber {
-                    QuickActionButton(title: "Call", systemImage: "phone.fill") {
-                        open(.call, firstPhoneNumber)
+            LiquidGlassGroup(spacing: 20) {
+                HStack(spacing: 20) {
+                    if let firstPhoneNumber {
+                        QuickActionButton(title: "Call", systemImage: "phone.fill") {
+                            open(.call, firstPhoneNumber)
+                        }
+                        QuickActionButton(title: "Message", systemImage: "message.fill") {
+                            open(.message, firstPhoneNumber)
+                        }
                     }
-                    QuickActionButton(title: "Message", systemImage: "message.fill") {
-                        open(.message, firstPhoneNumber)
-                    }
-                }
-                if let firstEmail {
-                    QuickActionButton(title: "Mail", systemImage: "envelope.fill") {
-                        open(.mail, firstEmail)
+                    if let firstEmail {
+                        QuickActionButton(title: "Mail", systemImage: "envelope.fill") {
+                            open(.mail, firstEmail)
+                        }
                     }
                 }
             }

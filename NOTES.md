@@ -86,6 +86,40 @@ fixed the double-computation.
 launch does not warrant SwiftData or a file. Keeping the `favoriteContactIDs` key means anyone already
 running the app keeps their favourites; `FavoritesStoreTests.readsLegacyKey` pins that down.
 
+## The tab bar, the top search field and Liquid Glass
+
+Three changes landed together, after the review above.
+
+**Search moved to the top.** `.searchable` now asks for `.navigationBarDrawer(displayMode: .always)`
+rather than taking `.automatic`. The field is pinned under the title the way Contacts shows it, instead
+of hiding above the first row until the list is dragged down. The explicit placement matters for a
+second reason: under `.automatic`, iOS 26 hands the search field to the *tab bar* — which is not where
+this app wants it.
+
+**A tab bar with Favorites and Contacts.** The two tabs are the same screen over a different slice of
+the address book, so `ContactsListViewModel` gained a `Scope` rather than growing a near-duplicate
+sibling. Favourites renders as one untitled group: the tab already names it, and an A–Z split would put
+a header over each of a handful of rows.
+
+The change worth pointing at is `ContactsModel`. Loading used to live in the list view model, and two
+tabs would have meant two view models each fetching and holding the entire address book. Loading moved
+into a shared `@Observable` owned at the app level — the same shape `FavoritesModel` already had — and
+the view models kept only what is genuinely per-tab: the query and the scope. One fetch, one copy of the
+contacts, and a star toggled in either tab is immediately visible in the other. Because the loading API
+still forwards through the view model, the existing tests needed one line changed.
+
+`ContactDetailView` hides the tab bar. The floating iOS 26 bar otherwise sits on top of the last row —
+which is exactly how I found it, on the screenshot below.
+
+**Liquid Glass quick actions.** The call / message / mail buttons are glass circles with the caption
+underneath, as Phone and Contacts present the same three actions. The deployment target is iOS 18 and
+`glassEffect` is iOS 26, so rather than scatter `#available` through the views, the check lives in one
+place — `LiquidGlass.swift` — behind a `liquidGlassCircle()` modifier and a `LiquidGlassGroup`
+container, both of which degrade to a material circle on iOS 18. The container is not decoration: it is
+what makes neighbouring circles blend as one piece of material instead of reading as three separate
+stickers. `.interactive()` is likewise load-bearing — without it the glass does not flex under a finger
+and the buttons feel dead.
+
 ## What I left alone
 
 - The **`ContentUnavailableView` empty states** for denied permission and load failure. They were
@@ -109,9 +143,13 @@ inside `#if DEBUG` as well).
 
 I ran the app on an iPhone 17 Pro simulator and confirmed the list, sectioning, coloured avatars,
 search field and index bar render correctly, and fixed an index-bar/chevron overlap found that way.
-I was not able to drive taps on this machine — the simulator automation needed `xcode-select` pointed
-at the full Xcode — so the detail screen, the quick actions and the favourites section were verified
-through previews and the test suite rather than by tapping through a running build.
+
+Driving taps still needs `xcode-select` pointed at the full Xcode, which is not the case on this
+machine. To see the tab bar, the favourites tab and the glass quick actions on a real build anyway, I
+built throwaway variants that started on the screen I wanted — preview data in place of the live
+repository, the favourites tab preselected, a contact preloaded into the navigation path — screenshotted
+each with `simctl`, and reverted. That is how the tab bar overlapping the detail screen's last row was
+found. The variants are not in the diff.
 
 ## What I would do next
 

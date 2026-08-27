@@ -19,6 +19,8 @@
 /* Begin PBXFileReference section */
 		A00000000000000000000003 /* ContactsExplorer.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = ContactsExplorer.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		A00000000000000000000011 /* ContactsExplorerTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = ContactsExplorerTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		E4130472304045C1000C5CC8 /* NOTES.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = NOTES.md; sourceTree = "<group>"; };
+		E4130473304045CC000C5CC8 /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -55,6 +57,8 @@
 		A00000000000000000000001 = {
 			isa = PBXGroup;
 			children = (
+				E4130473304045CC000C5CC8 /* README.md */,
+				E4130472304045C1000C5CC8 /* NOTES.md */,
 				A00000000000000000000004 /* ContactsExplorer */,
 				A00000000000000000000010 /* ContactsExplorerTests */,
 				A00000000000000000000002 /* Products */,

@@ -214,7 +214,7 @@ struct ContactsListViewModelTests {
     ) -> ContactsListViewModel {
         let dependencies = AppDependencies(contactsRepository: repository, favoritesStore: favoritesStore)
         return ContactsListViewModel(
-            dependencies: dependencies,
+            contacts: ContactsModel(dependencies: dependencies),
             favorites: FavoritesModel(favoritesStore: favoritesStore)
         )
     }

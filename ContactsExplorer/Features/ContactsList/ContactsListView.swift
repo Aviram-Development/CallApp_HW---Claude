@@ -14,15 +14,22 @@ struct ContactsListView: View {
 
     private let dependencies: AppDependencies
 
-    init(dependencies: AppDependencies, favorites: FavoritesModel) {
+    init(
+        dependencies: AppDependencies,
+        contacts: ContactsModel,
+        favorites: FavoritesModel,
+        scope: ContactsListViewModel.Scope = .all
+    ) {
         self.dependencies = dependencies
-        _viewModel = State(wrappedValue: ContactsListViewModel(dependencies: dependencies, favorites: favorites))
+        _viewModel = State(
+            wrappedValue: ContactsListViewModel(contacts: contacts, favorites: favorites, scope: scope)
+        )
     }
 
     var body: some View {
         NavigationStack(path: $path) {
             content
-                .navigationTitle("Contacts")
+                .navigationTitle(title)
                 .navigationDestination(for: Contact.self) { contact in
                     ContactDetailView(
                         contact: contact,
@@ -32,6 +39,8 @@ struct ContactsListView: View {
                 }
         }
         .task {
+            // Idempotent, and both tabs share one `ContactsModel`, so whichever appears first loads
+            // and the other simply finds the contacts already there.
             await viewModel.loadIfNeeded()
         }
         .onChange(of: scenePhase) { _, phase in
@@ -39,6 +48,13 @@ struct ContactsListView: View {
             // the user on the permission screen wondering what else to press.
             guard phase == .active else { return }
             Task { await viewModel.reloadIfPermissionMayHaveChanged() }
+        }
+    }
+
+    private var title: String {
+        switch viewModel.scope {
+        case .all: "Contacts"
+        case .favorites: "Favorites"
         }
     }
 
@@ -58,8 +74,8 @@ struct ContactsListView: View {
 
     @ViewBuilder
     private var loadedView: some View {
-        if viewModel.isEmptyOfContacts {
-            emptyAddressBookView
+        if viewModel.isEmptyOfScopedContacts {
+            emptyView
         } else {
             contactsList
         }
@@ -74,23 +90,18 @@ struct ContactsListView: View {
         return ScrollViewReader { proxy in
             List {
                 ForEach(sections) { section in
-                    Section {
-                        ForEach(section.contacts) { contact in
-                            NavigationLink(value: contact) {
-                                ContactRow(
-                                    contact: contact,
-                                    isFavorite: viewModel.favorites.isFavorite(contact),
-                                    onToggleFavorite: { viewModel.favorites.toggle(contact) }
-                                )
-                            }
-                            // A favourited contact appears both in the pinned section and in its
-                            // letter section, so identity has to include which section it is in.
-                            .id("\(section.id)-\(contact.id)")
+                    // The favourites tab is one untitled group -- the tab bar already names it, and
+                    // a header over every row would only add noise.
+                    if section.title.isEmpty {
+                        Section { rows(for: section) }.id(section.id)
+                    } else {
+                        Section {
+                            rows(for: section)
+                        } header: {
+                            Text(section.title)
                         }
-                    } header: {
-                        Text(section.title)
+                        .id(section.id)
                     }
-                    .id(section.id)
                 }
             }
             .listStyle(.plain)
@@ -105,7 +116,14 @@ struct ContactsListView: View {
                 }
             }
         }
-        .searchable(text: $viewModel.searchText, prompt: "Name or phone number")
+        // Pinned under the navigation title, the way Contacts does it, rather than hidden above the
+        // first row until the list is dragged down. `.automatic` would also hand the field to the
+        // tab bar on iOS 26, which is not where this app wants it.
+        .searchable(
+            text: $viewModel.searchText,
+            placement: .navigationBarDrawer(displayMode: .always),
+            prompt: "Name or phone number"
+        )
         // Contact names are proper nouns and phone numbers are not words, so neither
         // autocapitalization nor autocorrection has anything useful to contribute here.
         .textInputAutocapitalization(.never)
@@ -120,17 +138,42 @@ struct ContactsListView: View {
         }
     }
 
+    private func rows(for section: ContactSection) -> some View {
+        ForEach(section.contacts) { contact in
+            NavigationLink(value: contact) {
+                ContactRow(
+                    contact: contact,
+                    isFavorite: viewModel.favorites.isFavorite(contact),
+                    onToggleFavorite: { viewModel.favorites.toggle(contact) }
+                )
+            }
+            // A favourited contact appears both in the pinned section and in its
+            // letter section, so identity has to include which section it is in.
+            .id("\(section.id)-\(contact.id)")
+        }
+    }
+
     /// The index bar earns its space only when browsing a list long enough to need it.
     private func indexTitles(for sections: [ContactSection]) -> [String]? {
         guard !viewModel.isSearching, sections.count > 2 else { return nil }
         return sections.map(\.id)
     }
 
-    private var emptyAddressBookView: some View {
-        ContentUnavailableView {
-            Label("No Contacts", systemImage: "person.crop.circle.badge.questionmark")
-        } description: {
-            Text("Contacts you add on this device will appear here.")
+    @ViewBuilder
+    private var emptyView: some View {
+        switch viewModel.scope {
+        case .all:
+            ContentUnavailableView {
+                Label("No Contacts", systemImage: "person.crop.circle.badge.questionmark")
+            } description: {
+                Text("Contacts you add on this device will appear here.")
+            }
+        case .favorites:
+            ContentUnavailableView {
+                Label("No Favorites", systemImage: "star")
+            } description: {
+                Text("Star a contact to keep it here.")
+            }
         }
     }
 
@@ -170,7 +213,28 @@ struct ContactsListView: View {
     let dependencies = AppDependencies.preview()
     ContactsListView(
         dependencies: dependencies,
+        contacts: ContactsModel(dependencies: dependencies),
         favorites: FavoritesModel(favoritesStore: dependencies.favoritesStore)
+    )
+}
+
+#Preview("Favorites scope") {
+    let dependencies = AppDependencies.preview()
+    ContactsListView(
+        dependencies: dependencies,
+        contacts: ContactsModel(dependencies: dependencies),
+        favorites: FavoritesModel(favoritesStore: dependencies.favoritesStore),
+        scope: .favorites
+    )
+}
+
+#Preview("No favorites yet") {
+    let dependencies = AppDependencies.preview(favoriteIDs: [])
+    ContactsListView(
+        dependencies: dependencies,
+        contacts: ContactsModel(dependencies: dependencies),
+        favorites: FavoritesModel(favoritesStore: dependencies.favoritesStore),
+        scope: .favorites
     )
 }
 
@@ -178,6 +242,7 @@ struct ContactsListView: View {
     let dependencies = AppDependencies.preview(authorizationStatus: .denied)
     ContactsListView(
         dependencies: dependencies,
+        contacts: ContactsModel(dependencies: dependencies),
         favorites: FavoritesModel(favoritesStore: dependencies.favoritesStore)
     )
 }
@@ -186,6 +251,7 @@ struct ContactsListView: View {
     let dependencies = AppDependencies.preview(contacts: [])
     ContactsListView(
         dependencies: dependencies,
+        contacts: ContactsModel(dependencies: dependencies),
         favorites: FavoritesModel(favoritesStore: dependencies.favoritesStore)
     )
 }
